@@ -24,24 +24,25 @@ intents.voice_states = True
 
 class MusicBot(commands.Bot):
     async def setup_hook(self):
-        node = wavelink.Node(
-            uri=LAVALINK_URI,
-            password=LAVALINK_PASSWORD,
-            identifier="railway-lavalink",
-        )
-        asyncio.create_task(self.connect_lavalink(node))
+        asyncio.create_task(self.connect_lavalink())
 
-    async def connect_lavalink(self, node):
+    async def connect_lavalink(self):
         while True:
             try:
-                if node.status == wavelink.NodeStatus.CONNECTED:
+                existing = wavelink.Pool.get_node()
+                if existing and existing.status == wavelink.NodeStatus.CONNECTED:
                     return
-
-                print("Connecting to Lavalink...")
+                node = wavelink.Node(
+                    uri=LAVALINK_URI,
+                    password=LAVALINK_PASSWORD,
+                    identifier="railway-lavalink",
+                )
+                print(f"Connecting to Lavalink at {LAVALINK_URI}...")
                 await wavelink.Pool.connect(nodes=[node], client=self)
+                print("Lavalink connection established.")
                 return
-            except Exception as e:
-                print(f"Lavalink unavailable: {e}")
+            except Exception as exc:
+                print(f"Lavalink unavailable: {exc}")
                 await asyncio.sleep(10)
 
 
