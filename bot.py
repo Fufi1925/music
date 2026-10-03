@@ -1,5 +1,6 @@
 import asyncio
 import os
+from urllib.parse import urlparse
 
 import discord
 import wavelink
@@ -22,25 +23,42 @@ intents.message_content = True
 intents.voice_states = True
 
 
+async def wait_for_lavalink():
+    parsed = urlparse(LAVALINK_URI)
+    host = parsed.hostname
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    if not host:
+        raise RuntimeError(f"Invalid LAVALINK_URI: {LAVALINK_URI}")
+
+    for attempt in range(1, 31):
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port),
+                timeout=3,
+            )
+            writer.close()
+            await writer.wait_closed()
+            print(f"Lavalink TCP connection available ({host}:{port}).")
+            return
+        except (OSError, asyncio.TimeoutError) as e:
+            print(f"Waiting for Lavalink ({attempt}/30): {e}")
+            if attempt == 30:
+                raise RuntimeError("Lavalink did not become reachable in time.")
+            await asyncio.sleep(5)
+
+
 class MusicBot(commands.Bot):
     async def setup_hook(self):
+        await wait_for_lavalink()
+
         node = wavelink.Node(
             uri=LAVALINK_URI,
             password=LAVALINK_PASSWORD,
             identifier="railway-lavalink",
         )
-
-        for attempt in range(1, 13):
-            try:
-                print(f"Connecting to Lavalink (attempt {attempt}/12)...")
-                await wavelink.Pool.connect(nodes=[node], client=self)
-                print("Lavalink connection established.")
-                return
-            except Exception as e:
-                print(f"Lavalink connection failed: {e}")
-                if attempt == 12:
-                    raise
-                await asyncio.sleep(5)
+        await wavelink.Pool.connect(nodes=[node], client=self)
+        print("Lavalink connection requested.")
 
 
 bot = MusicBot(command_prefix="?", intents=intents)
