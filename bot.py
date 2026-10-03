@@ -1,4 +1,6 @@
+import asyncio
 import os
+
 import discord
 import wavelink
 from discord.ext import commands
@@ -22,10 +24,23 @@ intents.voice_states = True
 
 class MusicBot(commands.Bot):
     async def setup_hook(self):
-        await wavelink.Pool.connect(
-            nodes=[wavelink.Node(uri=LAVALINK_URI, password=LAVALINK_PASSWORD)],
-            client=self,
+        node = wavelink.Node(
+            uri=LAVALINK_URI,
+            password=LAVALINK_PASSWORD,
+            identifier="railway-lavalink",
         )
+
+        for attempt in range(1, 13):
+            try:
+                print(f"Connecting to Lavalink (attempt {attempt}/12)...")
+                await wavelink.Pool.connect(nodes=[node], client=self)
+                print("Lavalink connection established.")
+                return
+            except Exception as e:
+                print(f"Lavalink connection failed: {e}")
+                if attempt == 12:
+                    raise
+                await asyncio.sleep(5)
 
 
 bot = MusicBot(command_prefix="?", intents=intents)
@@ -58,7 +73,9 @@ async def ping(ctx):
 
 @bot.command()
 async def play(ctx, playlist_url: str):
-    if not playlist_url.startswith(("https://open.spotify.com/", "http://open.spotify.com/")):
+    if not playlist_url.startswith(
+        ("https://open.spotify.com/", "http://open.spotify.com/")
+    ):
         await ctx.send("Bitte einen gültigen Spotify-Link senden.")
         return
 
@@ -95,11 +112,15 @@ async def play(ctx, playlist_url: str):
         if not player.playing:
             await player.play(player.queue.get())
 
-        await ctx.send(f"▶️ **{playlist_name}** — {len(tracks)} Tracks zur Queue hinzugefügt.")
+        await ctx.send(
+            f"▶️ **{playlist_name}** — {len(tracks)} Tracks zur Queue hinzugefügt."
+        )
 
     except Exception as e:
         print(f"Playback error: {e}")
-        await ctx.send("Die Playlist konnte nicht gestartet werden. Prüfe die Lavalink-Verbindung.")
+        await ctx.send(
+            "Die Playlist konnte nicht gestartet werden. Prüfe die Lavalink-Verbindung."
+        )
 
 
 @bot.command()
