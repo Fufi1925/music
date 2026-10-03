@@ -31,6 +31,7 @@ plugins:
 
   lavasrc:
     providers:
+      - "ytsearch:"%ISRC%""
       - "ytsearch:%QUERY%"
     sources:
       spotify: true
@@ -48,3 +49,8 @@ plugins:
       clientId: ${SPOTIFY_CLIENT_ID}
       clientSecret: ${SPOTIFY_CLIENT_SECRET}
       countryCode: "DE"
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
+      resolveArtistsInSearch: false
+      preferPartnerApi: true
+      preferV1SearchApi: false
