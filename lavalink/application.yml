@@ -10,7 +10,7 @@ lavalink:
   server:
     password: ${LAVALINK_PASSWORD}
     sources:
-      youtube: false
+      youtube: true
       bandcamp: true
       soundcloud: true
       twitch: true
@@ -29,7 +29,7 @@ plugins:
       deezer: false
       yandexmusic: false
       flowerytts: false
-      youtube: false
+      youtube: true
       vkmusic: false
       tidal: false
       qobuz: false
