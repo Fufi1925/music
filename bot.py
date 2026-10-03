@@ -32,18 +32,17 @@ class MusicBot(commands.Bot):
         asyncio.create_task(self.connect_lavalink(node))
 
     async def connect_lavalink(self, node):
-        for attempt in range(1, 61):
+        while True:
             try:
-                print(f"Connecting to Lavalink (attempt {attempt}/60)...")
+                if node.status == wavelink.NodeStatus.CONNECTED:
+                    return
+
+                print("Connecting to Lavalink...")
                 await wavelink.Pool.connect(nodes=[node], client=self)
-                print("Lavalink connection requested.")
                 return
             except Exception as e:
                 print(f"Lavalink unavailable: {e}")
-                if attempt < 60:
-                    await asyncio.sleep(5)
-
-        print("Lavalink was not reachable after 5 minutes; will retry on next bot restart.")
+                await asyncio.sleep(10)
 
 
 bot = MusicBot(command_prefix="?", intents=intents)
@@ -64,9 +63,7 @@ async def on_track_end(payload: wavelink.TrackEndEventPayload):
     player = payload.player
     if player is None or player.queue.is_empty:
         return
-
-    track = player.queue.get()
-    await player.play(track)
+    await player.play(player.queue.get())
 
 
 @bot.command()
@@ -76,9 +73,7 @@ async def ping(ctx):
 
 @bot.command()
 async def play(ctx, playlist_url: str):
-    if not playlist_url.startswith(
-        ("https://open.spotify.com/", "http://open.spotify.com/")
-    ):
+    if not playlist_url.startswith(("https://open.spotify.com/", "http://open.spotify.com/")):
         await ctx.send("Bitte einen gültigen Spotify-Link senden.")
         return
 
@@ -90,7 +85,7 @@ async def play(ctx, playlist_url: str):
     try:
         node = wavelink.Pool.get_node()
         if node is None or node.status != wavelink.NodeStatus.CONNECTED:
-            await ctx.send("Lavalink ist noch nicht bereit. Bitte gleich nochmal versuchen.")
+            await ctx.send("Lavalink ist noch nicht bereit.")
             return
 
         player = ctx.guild.voice_client
@@ -101,7 +96,7 @@ async def play(ctx, playlist_url: str):
 
         result = await wavelink.Playable.search(playlist_url)
         if not result:
-            await ctx.send("Die Playlist konnte von Lavalink nicht geladen werden.")
+            await ctx.send("Die Playlist konnte nicht geladen werden.")
             return
 
         if isinstance(result, wavelink.Playlist):
@@ -112,7 +107,7 @@ async def play(ctx, playlist_url: str):
             playlist_name = "Spotify-Playlist"
 
         if not tracks:
-            await ctx.send("Die Playlist enthält keine abspielbaren Tracks.")
+            await ctx.send("Keine abspielbaren Tracks gefunden.")
             return
 
         player.queue.put(tracks)
@@ -120,15 +115,11 @@ async def play(ctx, playlist_url: str):
         if not player.playing:
             await player.play(player.queue.get())
 
-        await ctx.send(
-            f"▶️ **{playlist_name}** — {len(tracks)} Tracks zur Queue hinzugefügt."
-        )
+        await ctx.send(f"**{playlist_name}** — {len(tracks)} Tracks hinzugefügt.")
 
     except Exception as e:
         print(f"Playback error: {e}")
-        await ctx.send(
-            "Die Playlist konnte nicht gestartet werden. Prüfe die Lavalink-Verbindung."
-        )
+        await ctx.send("Die Playlist konnte nicht gestartet werden.")
 
 
 @bot.command()
@@ -138,7 +129,7 @@ async def skip(ctx):
         await ctx.send("Es läuft gerade nichts.")
         return
     await player.skip()
-    await ctx.send("⏭️ Übersprungen.")
+    await ctx.send("Übersprungen.")
 
 
 @bot.command()
@@ -149,7 +140,7 @@ async def stop(ctx):
         return
     player.queue.clear()
     await player.disconnect()
-    await ctx.send("⏹️ Musik gestoppt.")
+    await ctx.send("Musik gestoppt.")
 
 
 bot.run(DISCORD_TOKEN)
