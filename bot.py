@@ -29,8 +29,7 @@ class MusicBot(commands.Bot):
     async def connect_lavalink(self):
         while True:
             try:
-                existing = wavelink.Pool.get_node()
-                if existing and existing.status == wavelink.NodeStatus.CONNECTED:
+                if any(node.status == wavelink.NodeStatus.CONNECTED for node in wavelink.Pool.nodes.values()):
                     return
                 node = wavelink.Node(
                     uri=LAVALINK_URI,
